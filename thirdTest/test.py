@@ -5,6 +5,7 @@ from Bio import SeqIO
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
 import textwrap
 import matplotlib.pyplot as plt
+import re 
 
 # if os.path.isfile('test.xls')==False:
 #     link = 'https://api.nextprot.org/export/entries.xls?query=*'
@@ -30,18 +31,17 @@ info = []
 with open('nP20k.fasta', 'rU') as handle:
     for record in SeqIO.parse(handle, 'fasta'):
         recordstr = str(record.seq)
-        if recordstr.__contains__('U'):
-            recordstr = recordstr.replace('U', 'L')
+        fixed_sequence = re.sub(r'U','G',recordstr)
         if record.description.__contains__('PE=2'):
-            analyzed_seq = ProteinAnalysis(recordstr)
+            analyzed_seq = ProteinAnalysis(fixed_sequence)
             tup = (record.id, '1', analyzed_seq.gravy(), record.description)
             info.append(tup)
         if record.description.__contains__('PE=3'):
-            analyzed_seq = ProteinAnalysis(recordstr)
+            analyzed_seq = ProteinAnalysis(fixed_sequence)
             tup = (record.id, '3', analyzed_seq.gravy(), record.description)
             info.append(tup)
         if record.description.__contains__('PE=4'):
-            analyzed_seq = ProteinAnalysis(recordstr)
+            analyzed_seq = ProteinAnalysis(fixed_sequence)
             tup = (record.id, '4', analyzed_seq.gravy(), record.description)
             info.append(tup)
 
@@ -62,6 +62,7 @@ plt.ylabel('Proteins')
 #plt.ylim(0,200)
 plt.grid(True)
 plt.show()
+
 
 
         
