@@ -60,7 +60,8 @@ for file in dirs:
                     proteins[identifier]['Variants'] = variants
                     proteins[identifier]['PTMs'] = ptms
 df = pd.DataFrame.from_dict(proteins)
-df.to_excel('protein_table.xlsx')
+df_t = df.T
+df_t.to_excel('protein_table.xlsx')
 
                         
                         
