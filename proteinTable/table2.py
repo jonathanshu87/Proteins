@@ -33,6 +33,7 @@ with open ('nextprot_all.peff') as file:
             proteins[identifier]['Gravy'] = analyzed_seq.gravy()
 
 dirs = os.listdir()
+chromosome = ''
 for file in dirs:
     chrom = re.search(r'chromosome_(.+)\.txt', file)
     if chrom:
@@ -41,9 +42,16 @@ for file in dirs:
                 if line.__contains__('NX_'):
                     string = line[28:34] + ' ' + line[88:130]
                     match = re.search(r'NX_(.+?) ', line)
-                    identifier = match.group(1)
+                    match_n = re.search(r'(\d+)', string)
+                    match_l = re.match(r'([XYMu])', string)
                     info = string.split()
-                    chromosome = info[0][0:1]
+                    identifier = match.group(1)
+                    if match_n:
+                        print(match_n.group(1))
+                        chromosome = match_n.group(1)
+                    if match_l:
+                        print(match_l.group(1))
+                        chromosome = match_l.group(1)
                     proteomics = info[1]
                     antibody = info[2]
                     three_d = info[3]
