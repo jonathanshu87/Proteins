@@ -7,6 +7,7 @@ import re
 
 proteins={}
 with open ('nextprot_all.peff') as file:
+    print('INFO: Reading nextprot_all.peff')
     for record in SeqIO.parse(file, 'fasta'):
         recordstr = str(record.seq)
         fixed_sequence = re.sub(r'U','G',recordstr)
@@ -16,7 +17,6 @@ with open ('nextprot_all.peff') as file:
         match2 = re.search(r'\\PName=(.+?) isoform Iso (\d+) \\', record.description)
         if match2:
             name = match2.group(1)
-            isoform = match2.group(2)
         match3 = re.search(r'\\GName=(.+?) \\N', record.description)
         if match3:
             gene = match3.group(1)
@@ -25,15 +25,17 @@ with open ('nextprot_all.peff') as file:
             pe = match4.group(1)
         if identifier not in proteins:
             proteins[identifier] = {}
-            proteins[identifier]['Isoform_number'] = isoform
+            proteins[identifier]['Identifier'] = identifier
             proteins[identifier]['Name'] = name
-            proteins[identifier]['Gene'] = gene
-            proteins[identifier]['PE_number'] = pe
+            proteins[identifier]['Symbol'] = gene
+            proteins[identifier]['PE'] = pe
             proteins[identifier]['Length'] = len(record.seq)
             proteins[identifier]['Gravy'] = analyzed_seq.gravy()
+            proteins[identifier]['Chr'] = ''
 
 dirs = os.listdir()
 chromosome = ''
+print('INFO: Reading chromosome*.txt files')
 for file in dirs:
     chrom = re.search(r'chromosome_(.+)\.txt', file)
     if chrom:
@@ -41,17 +43,19 @@ for file in dirs:
             for line in infile:
                 if line.__contains__('NX_'):
                     string = line[28:34] + ' ' + line[88:130]
-                    match = re.search(r'NX_(.+?) ', line)
-                    match_n = re.search(r'(\d+)', string)
-                    match_l = re.match(r'([XYMu])', string)
+                    match1 = re.search(r'NX_(.+?) ', line)
+                    match2 = re.search(r'(\d+)', string)
+                    match3 = re.match(r'([XYMu])', string)
                     info = string.split()
-                    identifier = match.group(1)
-                    if match_n:
-                        print(match_n.group(1))
-                        chromosome = match_n.group(1)
-                    if match_l:
-                        print(match_l.group(1))
-                        chromosome = match_l.group(1)
+                    identifier = match1.group(1)
+                    if match2:
+                        match_n = match2.group(1)
+                        chromosome = match_n
+                    if match3:
+                        match_l = match3.group(1)
+                        if match_l[0] == 'u':
+                            match_l= match_l.replace('u', '?')
+                        chromosome = match_l
                     proteomics = info[1]
                     antibody = info[2]
                     three_d = info[3]
@@ -59,16 +63,23 @@ for file in dirs:
                     isoforms = info[5]
                     variants = info[6]
                     ptms = info[7] 
-                    proteins[identifier]['Chromosome'] = chromosome
+                    if proteins[identifier]['Chr'] != '' and proteins[identifier]['Chr'].split(',').__contains__(chromosome)==False:
+                        chromosome = proteins[identifier]['Chr'] + ',' + chromosome
+                    elif len(proteins[identifier]['Chr'].split(','))>=2:
+                        chromosome = proteins[identifier]['Chr']
+                    proteins[identifier]['Chr'] = chromosome
                     proteins[identifier]['Proteomics'] = proteomics
-                    proteins[identifier]['Antibody'] = antibody
+                    proteins[identifier]['Ab'] = antibody
                     proteins[identifier]['3D'] = three_d
                     proteins[identifier]['Disease'] = disease
-                    proteins[identifier]['Isoforms'] = isoforms
-                    proteins[identifier]['Variants'] = variants
-                    proteins[identifier]['PTMs'] = ptms
+                    proteins[identifier]['n_Isos'] = isoforms
+                    proteins[identifier]['n_Var'] = variants
+                    proteins[identifier]['n_PTMs'] = ptms
+
+print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame.from_dict(proteins)
 df_t = df.T
+df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease']]
 df_t.to_excel('protein_table.xlsx')
 
                         
