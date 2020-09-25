@@ -11,6 +11,24 @@ with open ('nextprot_all.peff') as file:
     for record in SeqIO.parse(file, 'fasta'):
         recordstr = str(record.seq)
         fixed_sequence = re.sub(r'U','G',recordstr)
+        index = 0
+        trypnum = 0
+        pep = 0
+        tryp = ''
+        if len(fixed_sequence) > 30:
+            for char in fixed_sequence:
+                index += 1
+                if (char == 'K' or char == 'R') and (index >=9 and index <=30):
+                    if fixed_sequence[index+1] == 'P':
+                        pass
+                    else:
+                        tryp = fixed_sequence[trypnum:index]
+                        if len(tryp) >= 2:
+                            pep += 1
+                        trypnum = index
+            if pep > 0:
+                pep += 1
+                        
         analyzed_seq = ProteinAnalysis(fixed_sequence)
         match = re.match(r'nxp:NX_(.+?)-(\d+)', record.description)
         identifier = match.group(1)
@@ -32,7 +50,7 @@ with open ('nextprot_all.peff') as file:
             proteins[identifier]['Length'] = len(record.seq)
             proteins[identifier]['Gravy'] = analyzed_seq.gravy()
             proteins[identifier]['Chr'] = ''
-
+            proteins[identifier]['Trypsin'] = pep
 dirs = os.listdir()
 chromosome = ''
 print('INFO: Reading chromosome*.txt files')
@@ -79,7 +97,7 @@ for file in dirs:
 print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame.from_dict(proteins)
 df_t = df.T
-df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease']]
+df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'Trypsin']]
 df_t.to_excel('protein_table.xlsx')
 
                         
