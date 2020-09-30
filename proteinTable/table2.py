@@ -4,31 +4,15 @@ import os.path
 from Bio import SeqIO
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
 import re 
+from pyteomics import parser
 
 proteins={}
 with open ('nextprot_all.peff') as file:
     print('INFO: Reading nextprot_all.peff')
     for record in SeqIO.parse(file, 'fasta'):
-        recordstr = str(record.seq)
-        fixed_sequence = re.sub(r'U','G',recordstr)
-        index = 0
         trypnum = 0
-        pep = 0
-        tryp = ''
-        if len(fixed_sequence) > 30:
-            for char in fixed_sequence:
-                index += 1
-                if (char == 'K' or char == 'R') and (index >=9 and index <=30):
-                    if fixed_sequence[index+1] == 'P':
-                        pass
-                    else:
-                        tryp = fixed_sequence[trypnum:index]
-                        if len(tryp) >= 2:
-                            pep += 1
-                        trypnum = index
-            if pep > 0:
-                pep += 1
-                        
+        recordstr = str(record.seq)
+        fixed_sequence = re.sub(r'U','G',recordstr)           
         analyzed_seq = ProteinAnalysis(fixed_sequence)
         match = re.match(r'nxp:NX_(.+?)-(\d+)', record.description)
         identifier = match.group(1)
@@ -41,6 +25,15 @@ with open ('nextprot_all.peff') as file:
         match4 = re.search(r'\\PE=(.+?) \\', record.description)
         if match4:
             pe = match4.group(1)
+        match5 = re.search(r'\((\d+)\|(\d+)\|PEFF:\d+\|mature protein\)', record.description)
+        if match5:
+            start = int(match5.group(1))
+            end = int(match5.group(2))
+            mature = fixed_sequence[start:(end+1)]
+            peptides = parser.cleave(mature, 'trypsin')
+            for peptide in peptides:
+                if 9 <= len(peptide) <= 30:
+                    trypnum += 1
         if identifier not in proteins:
             proteins[identifier] = {}
             proteins[identifier]['Identifier'] = identifier
@@ -50,7 +43,7 @@ with open ('nextprot_all.peff') as file:
             proteins[identifier]['Length'] = len(record.seq)
             proteins[identifier]['Gravy'] = analyzed_seq.gravy()
             proteins[identifier]['Chr'] = ''
-            proteins[identifier]['Trypsin'] = pep
+            proteins[identifier]['Trypsin'] = trypnum
 dirs = os.listdir()
 chromosome = ''
 print('INFO: Reading chromosome*.txt files')
