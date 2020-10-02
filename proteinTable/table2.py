@@ -5,6 +5,7 @@ from Bio import SeqIO
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
 import re 
 from pyteomics import parser
+import csv 
 
 proteins={}
 with open ('nextprot_all.peff') as file:
@@ -43,7 +44,8 @@ with open ('nextprot_all.peff') as file:
             proteins[identifier]['Length'] = len(record.seq)
             proteins[identifier]['Gravy'] = analyzed_seq.gravy()
             proteins[identifier]['Chr'] = ''
-            proteins[identifier]['Trypsin'] = trypnum
+            proteins[identifier]['n_Tryptic'] = trypnum
+
 dirs = os.listdir()
 chromosome = ''
 print('INFO: Reading chromosome*.txt files')
@@ -87,10 +89,24 @@ for file in dirs:
                     proteins[identifier]['n_Var'] = variants
                     proteins[identifier]['n_PTMs'] = ptms
 
+if os.path.isfile('peptideatlas.tsv')==False:
+    link = 'https://db.systemsbiology.net/sbeams/cgi/PeptideAtlas/GetNextProtChromMapping?atlas_build_id=491&nextprot_mapping_id=54&apply_action=QUERY&output_mode=tsv'
+    resp = requests.get(link)
+    with open('peptideatlas.tsv', 'wb') as f_output:
+        f_output.write(resp.content)
+tsv_file = open('peptideatlas.tsv')
+read_tsv = csv.reader(tsv_file, delimiter = '\t')
+next(read_tsv)
+for row in read_tsv:
+    identifier = row[1]
+    if identifier in proteins:
+        proteins[identifier]['PA_category'] = row[9]
+        proteins[identifier]['PA_n_peptides'] = row[10]
+tsv_file.close()
 print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame.from_dict(proteins)
 df_t = df.T
-df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'Trypsin']]
+df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic', 'PA_category', 'PA_n_peptides']]
 df_t.to_excel('protein_table.xlsx')
 
                         
