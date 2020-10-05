@@ -90,7 +90,7 @@ for file in dirs:
                     proteins[identifier]['n_PTMs'] = ptms
 
 if os.path.isfile('peptideatlas.tsv')==False:
-    link = 'https://db.systemsbiology.net/sbeams/cgi/PeptideAtlas/GetNextProtChromMapping?atlas_build_id=491&nextprot_mapping_id=54&apply_action=QUERY&output_mode=tsv'
+    link = 'https://db.systemsbiology.net/sbeams/cgi/PeptideAtlas/GetNextProtChromMapping?atlas_build_id=491&nextprot_mapping_id=55&apply_action=QUERY&output_mode=tsv'
     resp = requests.get(link)
     with open('peptideatlas.tsv', 'wb') as f_output:
         f_output.write(resp.content)
@@ -103,6 +103,7 @@ for row in read_tsv:
         proteins[identifier]['PA_category'] = row[9]
         proteins[identifier]['PA_n_peptides'] = row[10]
 tsv_file.close()
+
 print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame.from_dict(proteins)
 df_t = df.T
