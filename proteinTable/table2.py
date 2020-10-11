@@ -6,6 +6,9 @@ from Bio.SeqUtils.ProtParam import ProteinAnalysis
 import re 
 from pyteomics import parser
 import csv 
+import xlrd
+import matplotlib.pyplot as plt
+
 
 proteins={}
 with open ('nextprot_all.peff') as file:
@@ -37,10 +40,10 @@ with open ('nextprot_all.peff') as file:
                     trypnum += 1
         if identifier not in proteins:
             proteins[identifier] = {}
-            proteins[identifier]['Identifier'] = identifier
+            # proteins[identifier]['Identifier'] = identifier
             proteins[identifier]['Name'] = name
             proteins[identifier]['Symbol'] = gene
-            proteins[identifier]['PE'] = pe
+            proteins[identifier]['PE'] = int(pe)
             proteins[identifier]['Length'] = len(record.seq)
             proteins[identifier]['Gravy'] = analyzed_seq.gravy()
             proteins[identifier]['Chr'] = ''
@@ -80,14 +83,19 @@ for file in dirs:
                         chromosome = proteins[identifier]['Chr'] + ',' + chromosome
                     elif len(proteins[identifier]['Chr'].split(','))>=2:
                         chromosome = proteins[identifier]['Chr']
+
                     proteins[identifier]['Chr'] = chromosome
                     proteins[identifier]['Proteomics'] = proteomics
                     proteins[identifier]['Ab'] = antibody
                     proteins[identifier]['3D'] = three_d
                     proteins[identifier]['Disease'] = disease
-                    proteins[identifier]['n_Isos'] = isoforms
-                    proteins[identifier]['n_Var'] = variants
-                    proteins[identifier]['n_PTMs'] = ptms
+                    proteins[identifier]['n_Isos'] = int(isoforms)
+                    proteins[identifier]['n_Var'] = int(variants)
+                    proteins[identifier]['n_PTMs'] = int(ptms)
+
+for ident in proteins:
+    if proteins[ident]['Chr'].isdigit():
+        proteins[ident]['Chr'] = int(proteins[ident]['Chr'])
 
 if os.path.isfile('peptideatlas.tsv')==False:
     link = 'https://db.systemsbiology.net/sbeams/cgi/PeptideAtlas/GetNextProtChromMapping?atlas_build_id=491&nextprot_mapping_id=55&apply_action=QUERY&output_mode=tsv'
@@ -101,15 +109,65 @@ for row in read_tsv:
     identifier = row[1]
     if identifier in proteins:
         proteins[identifier]['PA_category'] = row[9]
-        proteins[identifier]['PA_n_peptides'] = row[10]
+        proteins[identifier]['PA_n_peptides'] = int(row[10])
 tsv_file.close()
 
-print('INFO: Writing final result: protein_table.xlsx')
-df = pd.DataFrame.from_dict(proteins)
-df_t = df.T
-df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic', 'PA_category', 'PA_n_peptides']]
-df_t.to_excel('protein_table.xlsx')
+for identifier in proteins:
+    proteins[identifier]['Edman'] = ''
+    proteins[identifier]['textbook knowledge'] = ''
+    proteins[identifier]['SP curated PPI'] = ''
+    proteins[identifier]['IntAct PPI GOLD'] = ''
+    proteins[identifier]['Exp function'] = ''
+    proteins[identifier]['mutagenesis'] = ''
 
+xls = pd.read_excel('Master_table_for_HPP_to_send[1].xls')
+for index, row in xls.iterrows():
+    match1 = re.search(r'NX_(.+)', row['acc. code'])
+    if match1:
+        identifier = match1.group(1)
+    proteins[identifier]['Edman'] = row['Edman']
+    proteins[identifier]['textbook knowledge'] = row['textbook knowledge']
+    proteins[identifier]['SP curated PPI'] = row['SP curated PPI']
+    proteins[identifier]['IntAct PPI GOLD'] = row['IntAct PPI GOLD']
+    proteins[identifier]['Exp function'] = row['Exp function']
+    proteins[identifier]['mutagenesis'] = row['mutagenesis']
+
+xlsx = pd.read_excel('PE1_forGil.xlsx', sheet_name = [0,1,7], header = None)
+for sheet in xlsx:
+    for line in xlsx[sheet]:
+        for item in xlsx[sheet][line]:
+            match1 = re.search(r'NX_(.+)', item)
+            if match1:
+                identifier = match1.group(1)
+            if sheet == 0 and identifier in proteins:
+                proteins[identifier]['MS_PA'] = 'Y'
+            if sheet == 1 and identifier in proteins:
+                proteins[identifier]['MS_MSV'] = 'Y'
+            if sheet == 7 and identifier in proteins:
+                 proteins[identifier]['MS_nP'] = 'Y'
+
+
+print('INFO: Writing final result: protein_table.xlsx')
+df = pd.DataFrame.from_dict(proteins, orient = 'index').reset_index()
+df.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic', 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP']
+df.to_excel('protein_table.xlsx')
+
+gravy = []
+for identifier in proteins:
+    gravy.append(proteins[identifier]['Gravy'])
+
+min = -2
+max = 2
+binsize = 0.1
+n_bins = int((max-min) / binsize)
+count, x_floor, patches = plt.hist(gravy, n_bins, [min,max], density = False, facecolor = 'r', alpha = 0.5)
+plt.title('Distribution of hydrophobicity of proteins')
+plt.xlabel('Hydrophobicity (GRAVY score)')
+plt.ylabel('Proteins')
+#plt.xlim(min,2)
+#plt.ylim(0,200)
+plt.grid(True)
+plt.savefig('gravy.png')
                         
                         
         
