@@ -40,7 +40,7 @@ with open ('nextprot_all.peff') as file:
                     trypnum += 1
         if identifier not in proteins:
             proteins[identifier] = {}
-            # proteins[identifier]['Identifier'] = identifier
+            proteins[identifier]['Identifier'] = identifier
             proteins[identifier]['Name'] = name
             proteins[identifier]['Symbol'] = gene
             proteins[identifier]['PE'] = int(pe)
@@ -147,10 +147,13 @@ for sheet in xlsx:
                  proteins[identifier]['MS_nP'] = 'Y'
 
 
+
 print('INFO: Writing final result: protein_table.xlsx')
-df = pd.DataFrame.from_dict(proteins, orient = 'index').reset_index()
-df.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic', 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP']
-df.to_excel('protein_table.xlsx')
+df = pd.DataFrame(proteins)
+df_t = df.transpose()
+df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP']]
+df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP']
+df_t.to_excel('protein_table.xlsx', index = False)
 
 gravy = []
 for identifier in proteins:
