@@ -119,6 +119,7 @@ for identifier in proteins:
     proteins[identifier]['IntAct PPI GOLD'] = ''
     proteins[identifier]['Exp function'] = ''
     proteins[identifier]['mutagenesis'] = ''
+    proteins[identifier]['protein_category'] = ''
 
 xls = pd.read_excel('Master_table_for_HPP_to_send[1].xls')
 for index, row in xls.iterrows():
@@ -146,32 +147,82 @@ for sheet in xlsx:
             if sheet == 7 and identifier in proteins:
                  proteins[identifier]['MS_nP'] = 'Y'
 
-
+for identifier in proteins:
+    if 'Olfactory receptor' in proteins[identifier]['Name'] or 'olfactory receptor' in proteins[identifier]['Name']:
+        proteins[identifier]['protein_category'] = 'OR'
+    if 'GPCR' in proteins[identifier]['Name'] or 'G-protein coupled receptor' in proteins[identifier]['Name']:
+        proteins[identifier]['protein_category'] = 'GPCR'
+    if 'defensin' in proteins[identifier]['Name']:
+        proteins[identifier]['protein_category'] = 'defensin'
+    if 'zinc finger' in proteins[identifier]['Name']:
+        proteins[identifier]['protein_category'] = 'zinc finger'
+    elif proteins[identifier]['Gravy'] >= 0.5 and proteins[identifier]['protein_category'] == '':
+        proteins[identifier]['protein_category'] = 'very hydrophobic'
+    elif proteins[identifier]['Gravy'] >= 0.0 and proteins[identifier]['protein_category'] == '':
+        proteins[identifier]['protein_category'] = 'hydrophobic'
 
 print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame(proteins)
 df_t = df.transpose()
-df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP']]
-df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP']
+df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category']]
+df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category']
 df_t.to_excel('protein_table.xlsx', index = False)
 
 gravy = []
 for identifier in proteins:
     gravy.append(proteins[identifier]['Gravy'])
 
+gravy2 = []
+for identifier in proteins:
+    if proteins[identifier]['PE'] == 2 or 3 or 4:
+        gravy2.append(proteins[identifier]['Gravy'])
+
+tryptic = []
+for identifier in proteins:
+    tryptic.append(proteins[identifier]['n_Tryptic'])
+
+tryptic2 = []
+for identifier in proteins:
+    if proteins[identifier]['PE'] == 2 or 3 or 4:
+        tryptic2.append(proteins[identifier]['n_Tryptic'])
+if os.path.isdir('Histograms')==False:
+    os.mkdir('Histograms')
+
 min = -2
 max = 2
 binsize = 0.1
 n_bins = int((max-min) / binsize)
-count, x_floor, patches = plt.hist(gravy, n_bins, [min,max], density = False, facecolor = 'r', alpha = 0.5)
+plt.hist(gravy, n_bins, [min,max], density = False, facecolor = 'r', alpha = 0.5)
 plt.title('Distribution of hydrophobicity of proteins')
 plt.xlabel('Hydrophobicity (GRAVY score)')
 plt.ylabel('Proteins')
-#plt.xlim(min,2)
-#plt.ylim(0,200)
 plt.grid(True)
-plt.savefig('gravy.png')
+plt.savefig('Histograms/gravy.png')
+plt.show()
+
+plt.hist(gravy2, n_bins, [min,max], density = False, facecolor = 'b', alpha = 0.5)
+plt.title('Distribution of hydrophobicity of PE 2, 3, 4 proteins')
+plt.xlabel('Hydrophobicity (GRAVY score)')
+plt.ylabel('Proteins')
+plt.grid(True)
+plt.savefig('Histograms/gravy2.png')
+plt.show()
+
+plt.hist(tryptic, bins=100, density = False, facecolor = 'r', alpha = 0.5)
+plt.grid(True)
+plt.title('Distribution of tryptic peptides')
+plt.xlabel('Number of peptides')
+plt.ylabel('Proteins')
+plt.savefig('Histograms/tryptic.png')
+plt.show()
                         
+plt.hist(tryptic2, bins=100, density = False, facecolor = 'b', alpha = 0.5)
+plt.grid(True)
+plt.title('Distribution of tryptic peptides for PE 2, 3, 4 proteins')
+plt.xlabel('Number of peptides')
+plt.ylabel('Proteins')
+plt.savefig('Histograms/tryptic2.png')
+plt.show()
                         
         
 
