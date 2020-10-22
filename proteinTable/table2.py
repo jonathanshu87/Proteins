@@ -20,15 +20,24 @@ with open ('nextprot_all.peff') as file:
         analyzed_seq = ProteinAnalysis(fixed_sequence)
         match = re.match(r'nxp:NX_(.+?)-(\d+)', record.description)
         identifier = match.group(1)
-        match2 = re.search(r'\\PName=(.+?) isoform Iso (\d+) \\', record.description)
+        match2 = re.search(r'\\PName=(.+?) isoform (.*?) (.*?) \\', record.description)
         if match2:
             name = match2.group(1)
+        else:
+            name = ''
+            print(f'WARNING: Unable to find isoform information in {record.description}')
         match3 = re.search(r'\\GName=(.+?) \\N', record.description)
         if match3:
             gene = match3.group(1)
+        else:
+            gene = ''
+            print(f'WARNING: Unable to find gene symbol information in {record.description}')
         match4 = re.search(r'\\PE=(.+?) \\', record.description)
         if match4:
             pe = match4.group(1)
+        else:
+            pe = ''
+            print(f'WARNING: Unable to find PE value in {record.description}')
         match5 = re.search(r'\((\d+)\|(\d+)\|PEFF:\d+\|mature protein\)', record.description)
         if match5:
             start = int(match5.group(1))
@@ -38,6 +47,8 @@ with open ('nextprot_all.peff') as file:
             for peptide in peptides:
                 if 9 <= len(peptide) <= 30:
                     trypnum += 1
+        else:
+            print(f'WARNING: Unable to find mature protein in {record.description}')   
         if identifier not in proteins:
             proteins[identifier] = {}
             proteins[identifier]['Identifier'] = identifier
@@ -72,6 +83,9 @@ for file in dirs:
                         if match_l[0] == 'u':
                             match_l= match_l.replace('u', '?')
                         chromosome = match_l
+                    if match2 == False and match3 == False:
+                        chromosome = ''
+                        print(f'WARNING: Unable to find chromosome information in {file}')
                     proteomics = info[1]
                     antibody = info[2]
                     three_d = info[3]
@@ -103,6 +117,7 @@ if os.path.isfile('peptideatlas.tsv')==False:
     with open('peptideatlas.tsv', 'wb') as f_output:
         f_output.write(resp.content)
 tsv_file = open('peptideatlas.tsv')
+print('INFO: Reading peptideatlas.tsv')
 read_tsv = csv.reader(tsv_file, delimiter = '\t')
 next(read_tsv)
 for row in read_tsv:
@@ -122,6 +137,7 @@ for identifier in proteins:
     proteins[identifier]['protein_category'] = ''
 
 xls = pd.read_excel('Master_table_for_HPP_to_send[1].xls')
+print('INFO: Reading Master_table_for_HPP_to_send[1].xls')
 for index, row in xls.iterrows():
     match1 = re.search(r'NX_(.+)', row['acc. code'])
     if match1:
@@ -134,6 +150,7 @@ for index, row in xls.iterrows():
     proteins[identifier]['mutagenesis'] = row['mutagenesis']
 
 xlsx = pd.read_excel('PE1_forGil.xlsx', sheet_name = [0,1,7], header = None)
+print('INFO: Reading PE1_forGil.xlsx')
 for sheet in xlsx:
     for line in xlsx[sheet]:
         for item in xlsx[sheet][line]:
@@ -174,7 +191,7 @@ for identifier in proteins:
 
 gravy2 = []
 for identifier in proteins:
-    if proteins[identifier]['PE'] == 2 or 3 or 4:
+    if proteins[identifier]['PE'] == 2 or proteins[identifier]['PE'] ==3 or proteins[identifier]['PE'] ==4:
         gravy2.append(proteins[identifier]['Gravy'])
 
 tryptic = []
@@ -183,11 +200,13 @@ for identifier in proteins:
 
 tryptic2 = []
 for identifier in proteins:
-    if proteins[identifier]['PE'] == 2 or 3 or 4:
+    if proteins[identifier]['PE'] == 2 or proteins[identifier]['PE'] ==3 or proteins[identifier]['PE'] ==4:
         tryptic2.append(proteins[identifier]['n_Tryptic'])
+
 if os.path.isdir('Histograms')==False:
     os.mkdir('Histograms')
 
+print('INFO: Creating histograms')
 min = -2
 max = 2
 binsize = 0.1
@@ -208,7 +227,7 @@ plt.grid(True)
 plt.savefig('Histograms/gravy2.png')
 plt.show()
 
-plt.hist(tryptic, bins=100, density = False, facecolor = 'r', alpha = 0.5)
+plt.hist(tryptic, 50, [0,50], density = False, facecolor = 'r', alpha = 0.5)
 plt.grid(True)
 plt.title('Distribution of tryptic peptides')
 plt.xlabel('Number of peptides')
@@ -216,7 +235,7 @@ plt.ylabel('Proteins')
 plt.savefig('Histograms/tryptic.png')
 plt.show()
                         
-plt.hist(tryptic2, bins=100, density = False, facecolor = 'b', alpha = 0.5)
+plt.hist(tryptic2, 50, [0,50], density = False, facecolor = 'b', alpha = 0.5)
 plt.grid(True)
 plt.title('Distribution of tryptic peptides for PE 2, 3, 4 proteins')
 plt.xlabel('Number of peptides')
