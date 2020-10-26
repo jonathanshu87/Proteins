@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 
 
 proteins={}
+geneError = 0
+matureError = 0
 with open ('nextprot_all.peff') as file:
     print('INFO: Reading nextprot_all.peff')
     for record in SeqIO.parse(file, 'fasta'):
@@ -31,7 +33,7 @@ with open ('nextprot_all.peff') as file:
             gene = match3.group(1)
         else:
             gene = ''
-            print(f'WARNING: Unable to find gene symbol information in {record.description}')
+            geneError += 1
         match4 = re.search(r'\\PE=(.+?) \\', record.description)
         if match4:
             pe = match4.group(1)
@@ -48,7 +50,7 @@ with open ('nextprot_all.peff') as file:
                 if 9 <= len(peptide) <= 30:
                     trypnum += 1
         else:
-            print(f'WARNING: Unable to find mature protein in {record.description}')   
+            matureError += 1
         if identifier not in proteins:
             proteins[identifier] = {}
             proteins[identifier]['Identifier'] = identifier
@@ -177,6 +179,9 @@ for identifier in proteins:
         proteins[identifier]['protein_category'] = 'very hydrophobic'
     elif proteins[identifier]['Gravy'] >= 0.0 and proteins[identifier]['protein_category'] == '':
         proteins[identifier]['protein_category'] = 'hydrophobic'
+
+print('No gene symbol:', geneError)
+print('No mature proteins:', matureError)
 
 print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame(proteins)
