@@ -272,7 +272,6 @@ for i, (key, val) in enumerate(tmr.items()):
     index.append(key)
     data.append(val)
 index.sort()
-print(index)
 ax = plt.subplot()
 ax.set_xticklabels(index)
 ax.set_xticks(range(1,len(index)+1))
