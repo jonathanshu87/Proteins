@@ -10,9 +10,9 @@ proteins = {}
 
 # Test with just one chromosome, then do the final run with the whole proteome
 # Input files can be either compressed on uncompressed
-input_file = 'nextprot_chromosome_MT.xml'
+# input_file = 'nextprot_chromosome_MT.xml'
 #input_file = 'G:/Data/nextprot/nextprot_release_2020-01-17/xml/nextprot_chromosome_21.xml.gz'
-#input_file = 'G:/Data/nextprot/nextprot_release_2020-01-17/xml/nextprot_all.xml.gz'
+input_file = 'nextprot_all.xml'
 
 # If the file ends with gz, then open it as a gzipped stream
 is_compressed = False

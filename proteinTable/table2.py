@@ -220,11 +220,10 @@ for identifier in proteins:
 
 tmr = {}
 for identifier in proteins:
-    if proteins[identifier]['Chr'] == 'M':
-        tmr_n = proteins[identifier]['n_TMRs']
-        if tmr_n not in tmr:
-            tmr[tmr_n]= []
-        tmr[tmr_n].append(proteins[identifier]['Gravy'])
+    tmr_n = proteins[identifier]['n_TMRs']
+    if tmr_n not in tmr:
+        tmr[tmr_n]= []
+    tmr[tmr_n].append(proteins[identifier]['Gravy'])
 
 if os.path.isdir('Histograms')==False:
     os.mkdir('Histograms')
@@ -268,16 +267,15 @@ plt.show()
 
 index = []
 data = []
-for i, (key, val) in enumerate(tmr.items()):
-    index.append(key)
-    data.append(val)
-index.sort()
-ax = plt.subplot()
-ax.set_xticklabels(index)
-ax.set_xticks(range(1,len(index)+1))
-plt.violinplot(data)
+for i_tmr in range(16):
+    if i_tmr in tmr:
+        data.append(tmr[i_tmr])
+        index.append(i_tmr)
+
+plt.violinplot(data, index, showmedians = True, showextrema = False)
 plt.xlabel('n_TMRs')
 plt.ylabel('GRAVY')
+plt.ylim(-2,2)
 plt.savefig('Histograms/tmr.png')
 plt.show()
 
