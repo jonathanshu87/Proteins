@@ -8,7 +8,7 @@ from pyteomics import parser
 import csv 
 import xlrd
 import matplotlib.pyplot as plt
-
+import statistics
 
 
 proteins={}
@@ -174,11 +174,13 @@ for identifier in proteins:
         proteins[identifier]['protein_category'] = 'GPCR'
     if 'defensin' in proteins[identifier]['Name']:
         proteins[identifier]['protein_category'] = 'defensin'
-    if 'zinc finger' in proteins[identifier]['Name']:
+    if 'zinc finger' in proteins[identifier]['Name'] or 'Zinc finger' in proteins[identifier]['Name']:
         proteins[identifier]['protein_category'] = 'zinc finger'
-    elif proteins[identifier]['Gravy'] >= 0.5 and proteins[identifier]['protein_category'] == '':
+    if 'LINC' in proteins[identifier]['Symbol']:
+        proteins[identifier]['protein_category'] = 'LINC RNA'
+    if proteins[identifier]['Gravy'] >= 0.5 and proteins[identifier]['protein_category'] == '':
         proteins[identifier]['protein_category'] = 'very hydrophobic'
-    elif proteins[identifier]['Gravy'] >= 0.0 and proteins[identifier]['protein_category'] == '':
+    if proteins[identifier]['Gravy'] >= 0.0 and proteins[identifier]['protein_category'] == '':
         proteins[identifier]['protein_category'] = 'hydrophobic'
 
 print('INFO: Reading tmr_table.xlsx')
@@ -190,14 +192,64 @@ for i in range(sheet.nrows):
         identifier = (sheet.cell_value(i,0))
         proteins[identifier]['n_TMRs'] = (sheet.cell_value(i,1))
 
+print('INFO: Reading normal_tissue.tsv')
+tissue = {}
+tsv_file2 = open('normal_tissue.tsv')
+read_tsv2 = csv.reader(tsv_file2, delimiter = '\t')
+next(read_tsv2)
+gene1 = 'TSPAN6'
+counter = 0
+for row in read_tsv2:
+    gene2 = row[1]
+    tissue[gene2] = {}
+    tissue[gene2]['reliability'] = row[5]
+    if gene1 != gene2:
+        gene1 = gene2
+        counter = 0
+    if row[4] == 'High':
+        counter += 1
+    tissue[gene2]['high'] = counter
+tsv_file2.close()
+
+print('INFO: Reading rna_tissue_consensus.tsv')
+tsv_file3 = open('rna_tissue_consensus.tsv')
+read_tsv3 = csv.reader(tsv_file3, delimiter = '\t')
+next(read_tsv3)
+gene1 = 'TSPAN6'
+data = []
+for row in read_tsv3:
+    gene2 = row[1]
+    data.append(float(row[3]))
+    if gene1 != gene2:
+        gene1 = gene2
+        data = []
+    if len(data) > 0:
+        if gene2 in tissue:
+            tissue[gene2]['median'] = statistics.median(data)
+            tissue[gene2]['max'] = max(data)
+        else:
+            tissue[gene2] = {}
+            tissue[gene2]['reliability'] = ''
+            tissue[gene2]['high'] = ''
+            tissue[gene2]['median'] = statistics.median(data)
+            tissue[gene2]['max'] = max(data)
+tsv_file3.close()
+
+for identifier in proteins:
+    if proteins[identifier]['Symbol'] in tissue:
+        proteins[identifier]['HPA_Ab_Reliability'] = tissue[proteins[identifier]['Symbol']]['reliability']
+        proteins[identifier]['HPA_nHigh'] = tissue[proteins[identifier]['Symbol']]['high']
+        proteins[identifier]['HPAcRNA_Median'] = tissue[proteins[identifier]['Symbol']]['median']
+        proteins[identifier]['HPAcRNA_Max'] = tissue[proteins[identifier]['Symbol']]['max']
+
 print('No gene symbol:', geneError)
 print('No mature proteins:', matureError)
 
 print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame(proteins)
 df_t = df.transpose()
-df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs']]
-df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs']
+df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh', 'HPAcRNA_Median', 'HPAcRNA_Max']]
+df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh','HPAcRNA_Median', 'HPAcRNA_Max']
 df_t.to_excel('protein_table.xlsx', index = False)
 
 gravy = []
