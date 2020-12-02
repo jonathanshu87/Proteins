@@ -9,7 +9,7 @@ import csv
 import xlrd
 import matplotlib.pyplot as plt
 import statistics
-
+from zipfile import ZipFile
 
 proteins={}
 geneError = 0
@@ -193,8 +193,15 @@ for i in range(sheet.nrows):
         proteins[identifier]['n_TMRs'] = (sheet.cell_value(i,1))
 
 print('INFO: Reading normal_tissue.tsv')
-tissue = {}
+if os.path.isfile('normal_tissue.tsv.zip')==False:
+    link = 'https://www.proteinatlas.org/download/normal_tissue.tsv.zip'
+    resp = requests.get(link)
+    with open('normal_tissue.tsv.zip', 'wb') as f_output:
+        f_output.write(resp.content)
+    zip = ZipFile('normal_tissue.tsv.zip')
+    zip.extractall()
 tsv_file2 = open('normal_tissue.tsv')
+tissue = {}
 read_tsv2 = csv.reader(tsv_file2, delimiter = '\t')
 next(read_tsv2)
 gene1 = 'TSPAN6'
@@ -212,7 +219,14 @@ for row in read_tsv2:
 tsv_file2.close()
 
 print('INFO: Reading rna_tissue_consensus.tsv')
-tsv_file3 = open('rna_tissue_consensus.tsv')
+if os.path.isfile('rna_tissue_consensus.tsv.zip')==False:
+    link = 'https://www.proteinatlas.org/download/rna_tissue_consensus.tsv.zip'
+    resp = requests.get(link)
+    with open('rna_tissue_consensus.tsv.zip', 'wb') as f_output:
+        f_output.write(resp.content)
+    zip = ZipFile('rna_tissue_consensus.tsv.zip')
+    zip.extractall()
+tsv_file3 = open('rna_consensus.tsv')
 read_tsv3 = csv.reader(tsv_file3, delimiter = '\t')
 next(read_tsv3)
 gene1 = 'TSPAN6'
