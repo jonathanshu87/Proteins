@@ -10,6 +10,7 @@ import xlrd
 import matplotlib.pyplot as plt
 import statistics
 from zipfile import ZipFile
+import numpy as np
 
 proteins={}
 geneError = 0
@@ -239,13 +240,24 @@ for row in read_tsv3:
         data = []
     if len(data) > 0:
         if gene2 in tissue:
-            tissue[gene2]['median'] = statistics.median(data)
+            if statistics.median(data) != 0:
+                tissue[gene2]['median'] = statistics.median(data)
+            else: 
+                tissue[gene2]['median'] = ''
             tissue[gene2]['max'] = max(data)
+            positive = 0
+            for number in data:
+                if number > 0:
+                    positive += 1
+            tissue[gene2]['positive'] = positive
         else:
             tissue[gene2] = {}
             tissue[gene2]['reliability'] = ''
             tissue[gene2]['high'] = ''
-            tissue[gene2]['median'] = statistics.median(data)
+            if statistics.median(data) != 0:
+                tissue[gene2]['median'] = statistics.median(data)
+            else: 
+                tissue[gene2]['median'] = ''
             tissue[gene2]['max'] = max(data)
 tsv_file3.close()
 
@@ -253,7 +265,8 @@ for identifier in proteins:
     if proteins[identifier]['Symbol'] in tissue:
         proteins[identifier]['HPA_Ab_Reliability'] = tissue[proteins[identifier]['Symbol']]['reliability']
         proteins[identifier]['HPA_nHigh'] = tissue[proteins[identifier]['Symbol']]['high']
-        proteins[identifier]['HPAcRNA_Median'] = tissue[proteins[identifier]['Symbol']]['median']
+        proteins[identifier]['HPAcRNA_gt0Median'] = tissue[proteins[identifier]['Symbol']]['median']
+        proteins[identifier]['HPAcRNA_Ngt0'] = tissue[proteins[identifier]['Symbol']]['positive']
         proteins[identifier]['HPAcRNA_Max'] = tissue[proteins[identifier]['Symbol']]['max']
 
 print('No gene symbol:', geneError)
@@ -262,8 +275,8 @@ print('No mature proteins:', matureError)
 print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame(proteins)
 df_t = df.transpose()
-df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh', 'HPAcRNA_Median', 'HPAcRNA_Max']]
-df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh','HPAcRNA_Median', 'HPAcRNA_Max']
+df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh', 'HPAcRNA_gt0Median', 'HPAcRNA_Ngt0', 'HPAcRNA_Max']]
+df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh','HPAcRNA_gt0Median', 'HPAcRNA_Ngt0', 'HPAcRNA_Max']
 df_t.to_excel('protein_table.xlsx', index = False)
 
 gravy = []
@@ -291,10 +304,39 @@ for identifier in proteins:
         tmr[tmr_n]= []
     tmr[tmr_n].append(proteins[identifier]['Gravy'])
 
+reliability = {}
+reliability['blank'] = 0
+for identifier in proteins:
+    if 'HPA_Ab_Reliability' in proteins[identifier]:
+        level = proteins[identifier]['HPA_Ab_Reliability']
+        if level == '':
+            reliability['blank'] += 1
+        else:
+            if level not in reliability:
+                reliability[level] = 0
+            reliability[level] += 1
+
+reliability_pe = {}
+reliability_pe['blank'] = {}
+for identifier in proteins:
+    if 'HPA_Ab_Reliability' in proteins[identifier]:
+        level = proteins[identifier]['HPA_Ab_Reliability']
+        pe = str(proteins[identifier]['PE'])
+        if level == '':
+            if pe not in reliability_pe['blank']:
+                reliability_pe['blank'][pe] = 0
+            reliability_pe['blank'][pe] += 1
+        else:
+            if level not in reliability_pe:
+                reliability_pe[level] = {}
+            if pe not in reliability_pe[level]:
+                reliability_pe[level][pe] = 0
+            reliability_pe[level][pe] += 1
+
 if os.path.isdir('Histograms')==False:
     os.mkdir('Histograms')
 
-print('INFO: Creating histograms')
+print('INFO: Creating plots')
 min = -2
 max = 2
 binsize = 0.1
@@ -345,5 +387,46 @@ plt.ylim(-2,2)
 plt.savefig('Histograms/tmr.png')
 plt.show()
 
-        
+names = list(reliability.keys())
+values = list(reliability.values())
+plt.bar(names, values)
+plt.savefig('Histograms/reliability')
+plt.show()
 
+category = list(reliability_pe.keys())
+pe1 = []
+pe2 = []
+pe3 = []
+pe4 = []
+pe5 = []
+for status in reliability_pe:      
+    if '1' in reliability_pe[status]:
+        pe1.append(reliability_pe[status]['1'])
+    else: 
+        pe1.append(0)
+    if '2' in reliability_pe[status]:
+        pe2.append(reliability_pe[status]['2'])
+    else: 
+        pe2.append(0)
+    if '3' in reliability_pe[status]:
+        pe3.append(reliability_pe[status]['3'])
+    else: 
+        pe3.append(0)
+    if '4' in reliability_pe[status]:
+        pe4.append(reliability_pe[status]['4'])
+    else: 
+        pe4.append(0)
+    if '5' in reliability_pe[status]:
+        pe5.append(reliability_pe[status]['5'])
+    else: 
+        pe5.append(0)
+r = range(len(category))
+plt.bar(r, pe1, color = '#FF9999', label = 'PE1')
+plt.bar(r, pe2, bottom = pe1, color = '#00BFFF', label = 'PE2')
+plt.bar(r, pe3, bottom = np.add(pe1,pe2), color = '#C1FFC1', label = 'PE3')
+plt.bar(r, pe4, bottom = np.add(np.add(pe1,pe2), pe3), color = '#CAE1FF', label = 'PE4')
+plt.bar(r, pe5, bottom = np.add(np.add(np.add(pe1,pe2), pe3), pe4), color = '#FFDEAD', label = 'PE5')
+plt.xticks(r, category)
+plt.legend()
+plt.savefig('Histograms/reliability_pe')
+plt.show()
