@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import statistics
 from zipfile import ZipFile
 import numpy as np
+import mygene
+
 
 proteins={}
 geneError = 0
@@ -193,6 +195,7 @@ for i in range(sheet.nrows):
         identifier = (sheet.cell_value(i,0))
         proteins[identifier]['n_TMRs'] = (sheet.cell_value(i,1))
 
+mg = mygene.MyGeneInfo()
 print('INFO: Reading normal_tissue.tsv')
 if os.path.isfile('normal_tissue.tsv.zip')==False:
     link = 'https://www.proteinatlas.org/download/normal_tissue.tsv.zip'
@@ -207,18 +210,56 @@ read_tsv2 = csv.reader(tsv_file2, delimiter = '\t')
 next(read_tsv2)
 gene1 = 'TSPAN6'
 counter = 0
+ensg1 = []
+ensg1.append('ENSG00000000003')
 for row in read_tsv2:
     gene2 = row[1]
     tissue[gene2] = {}
     tissue[gene2]['reliability'] = row[5]
     if gene1 != gene2:
+        ensg1.append(row[0])
         gene1 = gene2
         counter = 0
     if row[4] == 'High':
         counter += 1
     tissue[gene2]['high'] = counter
+
+missing1 = []
+uniprot1 = []
+
+ensg_convert1 = mg.querymany(ensg1, scopes = 'ensembl.gene', fields = 'uniprot', species = 'human')
+for item in ensg_convert1:
+    if 'uniprot' in item:
+        if 'Swiss-Prot' in item['uniprot']:
+            uniprot1.append((item['uniprot']['Swiss-Prot']))
+    else: 
+        missing1.append(item['query'])
+
+symbol1 = []
+tsv_file2.seek(0)
+for row in read_tsv2:
+    for missing in missing1:
+        if missing == row[0]:
+            head, sep, tail = row[1].partition('.')
+            x = head
+            if x not in symbol1:
+                symbol1.append(x)
+
 tsv_file2.close()
 
+counter = 0
+ident = []
+gene = []
+for identifier in proteins:
+    ident.append(proteins[identifier]['Identifier'])
+    gene.append(proteins[identifier]['Symbol'])
+for x in uniprot1:
+    if x not in ident:
+        counter += 1
+for y in symbol1:
+    if y not in gene:
+        counter += 1
+print('Unmatched:', counter)   
 print('INFO: Reading rna_tissue_consensus.tsv')
 if os.path.isfile('rna_tissue_consensus.tsv.zip')==False:
     link = 'https://www.proteinatlas.org/download/rna_tissue_consensus.tsv.zip'
