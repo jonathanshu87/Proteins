@@ -181,6 +181,15 @@ for identifier in proteins:
         proteins[identifier]['protein_category'] = 'zinc finger'
     if 'LINC' in proteins[identifier]['Symbol']:
         proteins[identifier]['protein_category'] = 'LINC RNA'
+    if 'T cell receptor' in proteins[identifier]['Name']:
+        if 'variable' in proteins[identifier]['Name'] or 'diversity' in proteins[identifier]['Name'] or 'joining' in proteins[identifier]['Name']:
+            proteins[identifier]['protein_category'] = 'TCR_VDJ'
+    if 'Taste receptor' in proteins[identifier]['Name']:
+        proteins[identifier]['protein_category'] = 'TasteRecep'
+    if 'Endogenous retrovirus' in  proteins[identifier]['Name'] or 'endogenous retrovirus' in proteins[identifier]['Name']:
+        proteins[identifier]['protein_category'] = 'ERVM'
+    if 'PRAME' in proteins[identifier]['Name']:
+        proteins[identifier]['protein_category'] = 'PRAME'
     if proteins[identifier]['Gravy'] >= 0.5 and proteins[identifier]['protein_category'] == '':
         proteins[identifier]['protein_category'] = 'very hydrophobic'
     if proteins[identifier]['Gravy'] >= 0.0 and proteins[identifier]['protein_category'] == '':
@@ -377,64 +386,64 @@ for identifier in proteins:
 if os.path.isdir('Histograms')==False:
     os.mkdir('Histograms')
 
-print('INFO: Creating plots')
-min = -2
-max = 2
-binsize = 0.1
-n_bins = int((max-min) / binsize)
-plt.hist(gravy, n_bins, [min,max], density = False, facecolor = 'r', alpha = 0.5)
-plt.title('Distribution of hydrophobicity of proteins')
-plt.xlabel('Hydrophobicity (GRAVY score)')
-plt.ylabel('Proteins')
-plt.grid(True)
-plt.savefig('Histograms/gravy.png')
-plt.show()
+# print('INFO: Creating plots')
+# min = -2
+# max = 2
+# binsize = 0.1
+# n_bins = int((max-min) / binsize)
+# plt.hist(gravy, n_bins, [min,max], density = False, facecolor = 'r', alpha = 0.5)
+# plt.title('Distribution of hydrophobicity of proteins')
+# plt.xlabel('Hydrophobicity (GRAVY score)')
+# plt.ylabel('Proteins')
+# plt.grid(True)
+# plt.savefig('Histograms/gravy.png')
+# plt.show()
 
-plt.hist(gravy2, n_bins, [min,max], density = False, facecolor = 'b', alpha = 0.5)
-plt.title('Distribution of hydrophobicity of PE 2, 3, 4 proteins')
-plt.xlabel('Hydrophobicity (GRAVY score)')
-plt.ylabel('Proteins')
-plt.grid(True)
-plt.savefig('Histograms/gravy2.png')
-plt.show()
+# plt.hist(gravy2, n_bins, [min,max], density = False, facecolor = 'b', alpha = 0.5)
+# plt.title('Distribution of hydrophobicity of PE 2, 3, 4 proteins')
+# plt.xlabel('Hydrophobicity (GRAVY score)')
+# plt.ylabel('Proteins')
+# plt.grid(True)
+# plt.savefig('Histograms/gravy2.png')
+# plt.show()
 
-plt.hist(tryptic, 50, [0,50], density = False, facecolor = 'r', alpha = 0.5)
-plt.grid(True)
-plt.title('Distribution of tryptic peptides')
-plt.xlabel('Number of peptides')
-plt.ylabel('Proteins')
-plt.savefig('Histograms/tryptic.png')
-plt.show()
+# plt.hist(tryptic, 50, [0,50], density = False, facecolor = 'r', alpha = 0.5)
+# plt.grid(True)
+# plt.title('Distribution of tryptic peptides')
+# plt.xlabel('Number of peptides')
+# plt.ylabel('Proteins')
+# plt.savefig('Histograms/tryptic.png')
+# plt.show()
                         
-plt.hist(tryptic2, 50, [0,50], density = False, facecolor = 'b', alpha = 0.5)
-plt.grid(True)
-plt.title('Distribution of tryptic peptides for PE 2, 3, 4 proteins')
-plt.xlabel('Number of peptides')
-plt.ylabel('Proteins')
-plt.savefig('Histograms/tryptic2.png')
-plt.show()
+# plt.hist(tryptic2, 50, [0,50], density = False, facecolor = 'b', alpha = 0.5)
+# plt.grid(True)
+# plt.title('Distribution of tryptic peptides for PE 2, 3, 4 proteins')
+# plt.xlabel('Number of peptides')
+# plt.ylabel('Proteins')
+# plt.savefig('Histograms/tryptic2.png')
+# plt.show()
 
-index = []
-data = []
-for i_tmr in range(16):
-    if i_tmr in tmr:
-        data.append(tmr[i_tmr])
-        index.append(i_tmr)
+# index = []
+# data = []
+# for i_tmr in range(16):
+#     if i_tmr in tmr:
+#         data.append(tmr[i_tmr])
+#         index.append(i_tmr)
 
-plt.violinplot(data, index, showmedians = True, showextrema = False)
-plt.xlabel('n_TMRs')
-plt.ylabel('GRAVY')
-plt.ylim(-2,2)
-plt.savefig('Histograms/tmr.png')
-plt.show()
+# plt.violinplot(data, index, showmedians = True, showextrema = False)
+# plt.xlabel('n_TMRs')
+# plt.ylabel('GRAVY')
+# plt.ylim(-2,2)
+# plt.savefig('Histograms/tmr.png')
+# plt.show()
 
-names = list(reliability.keys())
-values = list(reliability.values())
+names = ['Enhanced', 'Supported', 'Approved', 'Uncertain']
+values = [reliability['Enhanced'],reliability['Supported'],reliability['Approved'],reliability['Uncertain']]
 plt.bar(names, values)
 plt.savefig('Histograms/reliability')
 plt.show()
 
-category = list(reliability_pe.keys())
+category = ['Enhanced', 'Supported', 'Approved', 'Uncertain', 'blank']
 pe1 = []
 pe2 = []
 pe3 = []
@@ -461,6 +470,7 @@ for status in reliability_pe:
         pe5.append(reliability_pe[status]['5'])
     else: 
         pe5.append(0)
+
 r = range(len(category))
 plt.bar(r, pe1, color = '#FF9999', label = 'PE1')
 plt.bar(r, pe2, bottom = pe1, color = '#00BFFF', label = 'PE2')
@@ -470,4 +480,98 @@ plt.bar(r, pe5, bottom = np.add(np.add(np.add(pe1,pe2), pe3), pe4), color = '#FF
 plt.xticks(r, category)
 plt.legend()
 plt.savefig('Histograms/reliability_pe')
+plt.show()
+
+category2 = ['TCR_VDJ', 'TasteRecep', 'ERVM', 'PRAME']
+category_pe = {}
+for identifier in proteins:
+    if proteins[identifier]['protein_category'] in category2:
+        cat = proteins[identifier]['protein_category']
+        pe = str(proteins[identifier]['PE'])
+        if cat not in category_pe:
+            category_pe[cat] = {}
+        if pe not in category_pe[cat]:
+            category_pe[cat][pe] = 0
+        category_pe[cat][pe] += 1
+
+pe1 = []
+pe2 = []
+pe3 = []
+pe4 = []
+pe5 = []
+for c in category_pe:      
+    if '1' in category_pe[c]:
+        pe1.append(category_pe[c]['1'])
+    else: 
+        pe1.append(0)
+    if '2' in category_pe[c]:
+        pe2.append(category_pe[c]['2'])
+    else: 
+        pe2.append(0)
+    if '3' in category_pe[c]:
+        pe3.append(category_pe[c]['3'])
+    else: 
+        pe3.append(0)
+    if '4' in category_pe[c]:
+        pe4.append(category_pe[c]['4'])
+    else: 
+        pe4.append(0)
+    if '5' in category_pe[c]:
+        pe5.append(category_pe[c]['5'])
+    else: 
+        pe5.append(0)
+
+r = range(len(category2))
+plt.bar(r, pe1, color = '#FF9999', label = 'PE1')
+plt.bar(r, pe2, bottom = pe1, color = '#00BFFF', label = 'PE2')
+plt.bar(r, pe3, bottom = np.add(pe1,pe2), color = '#C1FFC1', label = 'PE3')
+plt.bar(r, pe4, bottom = np.add(np.add(pe1,pe2), pe3), color = '#CAE1FF', label = 'PE4')
+plt.bar(r, pe5, bottom = np.add(np.add(np.add(pe1,pe2), pe3), pe4), color = '#FFDEAD', label = 'PE5')
+plt.xticks(r, category2)
+plt.legend()
+plt.savefig('Histograms/category_pe')
+plt.show()
+
+category3 = ('PE2,3,4', 'protein_category', '')
+pe_234 = {}
+for identifier in proteins:
+    if proteins[identifier]['PE']==2 or proteins[identifier]['PE']==3 or proteins[identifier]['PE']==4:
+        num = str(proteins[identifier]['PE'])
+        if num not in pe_234:
+            pe_234[num] = 0
+        pe_234[num] += 1
+pc = {}
+pc['other'] = 0
+for identifier in proteins:
+    if proteins[identifier]['PE']==2 or proteins[identifier]['PE']==3 or proteins[identifier]['PE']==4:
+        p = proteins[identifier]['protein_category']
+        if p == '':
+            pc['other'] += 1
+        else:
+            if p not in pc:
+                pc[p] = 0
+            pc[p] += 1
+ 
+plt.bar(0, pe_234['2'], color = '#00BFFF', label = 'PE2')
+plt.bar(0, pe_234['3'], bottom = pe_234['2'], color = '#C1FFC1', label = 'PE3')
+plt.bar(0, pe_234['4'], bottom = np.add(pe_234['2'],pe_234['3']), color = '#CAE1FF', label = 'PE4')
+plt.bar(1, pc['OR'], color = '#B00923', label = 'OR')
+plt.bar(1, pc['GPCR'], bottom = pc['OR'], color = '#F09729', label = 'GPCR')
+plt.bar(1, pc['defensin'], bottom = np.add(pc['OR'], pc['GPCR']), color = '#3B7D5C', label = 'defensin')
+plt.bar(1, pc['zinc finger'], bottom = np.add(np.add(pc['OR'], pc['GPCR']), pc['defensin']), color = '#038DB2', label = 'zinc finger')
+plt.bar(1, pc['LINC RNA'], bottom = np.add(np.add(np.add(pc['OR'], pc['GPCR']), pc['defensin']), pc['zinc finger']), color = '#6E6B95', label = 'LINC RNA')
+plt.bar(1, pc['TCR_VDJ'], bottom = np.add(np.add(np.add(np.add(pc['OR'], pc['GPCR']), pc['defensin']), pc['zinc finger']), pc['LINC RNA']), color = '#1C2440', label = 'TCR_VDJ')
+plt.bar(1, pc['TasteRecep'], bottom = np.add(np.add(np.add(np.add(np.add(pc['OR'], pc['GPCR']), pc['defensin']), pc['zinc finger']), pc['LINC RNA']), pc['TCR_VDJ']), color = '#3C1249', label = 'TasteRecep')
+plt.bar(1, pc['ERVM'], bottom = np.add(np.add(np.add(np.add(np.add(np.add(pc['OR'], pc['GPCR']), pc['defensin']), pc['zinc finger']), pc['LINC RNA']), pc['TCR_VDJ']), pc['TasteRecep']), color = '#CBA884', label = 'ERVM')
+plt.bar(1, pc['PRAME'], bottom = np.add(np.add(np.add(np.add(np.add(np.add(np.add(pc['OR'], pc['GPCR']), pc['defensin']), pc['zinc finger']), pc['LINC RNA']), pc['TCR_VDJ']), pc['TasteRecep']), pc['ERVM']), color = '#ACA296', label = 'PRAME')
+plt.bar(1, pc['hydrophobic'], bottom = np.add(np.add(np.add(np.add(np.add(np.add(np.add(np.add(pc['OR'], pc['GPCR']), pc['defensin']), pc['zinc finger']), pc['LINC RNA']), pc['TCR_VDJ']), pc['TasteRecep']), pc['ERVM']), pc['PRAME']), color = '#678b8b', label = 'hydrophobic')
+plt.bar(1, pc['very hydrophobic'], bottom = np.add(np.add(np.add(np.add(np.add(np.add(np.add(np.add(np.add(pc['OR'], pc['GPCR']), pc['defensin']), pc['zinc finger']), pc['LINC RNA']), pc['TCR_VDJ']), pc['TasteRecep']), pc['ERVM']), pc['PRAME']), pc['hydrophobic']), color = '#09311C', label = 'very hydrophobic')
+plt.bar(1, pc['other'], bottom = np.add(np.add(np.add(np.add(np.add(np.add(np.add(np.add(np.add(np.add(pc['OR'], pc['GPCR']), pc['defensin']), pc['zinc finger']), pc['LINC RNA']), pc['TCR_VDJ']), pc['TasteRecep']), pc['ERVM']), pc['PRAME']), pc['hydrophobic']), pc['very hydrophobic']), color = '#F1928E', label = 'other')
+plt.bar(2, 0, width = 1.5)
+
+plt.xticks(range(len(category3)), category3)
+handles, labels = plt.gca().get_legend_handles_labels()
+order = [2,1,0,14,13,12,11,10,9,8,7,6,5,4,3]
+plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order], loc= 'upper right')
+plt.savefig('Histograms/category_pe')
 plt.show()
