@@ -12,11 +12,26 @@ import statistics
 from zipfile import ZipFile
 import numpy as np
 import mygene
-
+import wget
+import gzip
+import shutil
+import sys
+from lxml import etree
 
 proteins={}
 geneError = 0
 matureError = 0
+
+if os.path.isfile('nextprot_all.peff')==False:
+    print ('INFO: Downloading nextprot_all.peff.gz')
+    link = 'ftp://ftp.nextprot.org/pub/current_release/peff/nextprot_all.peff.gz'
+    wget.download(link)
+    fp = open('nextprot_all.peff', 'wb')
+    with gzip.open('nextprot_all.peff.gz', 'rb') as f:
+        bindata = f.read()
+    fp.write(bindata)
+    fp.close()
+
 with open ('nextprot_all.peff') as file:
     print('INFO: Reading nextprot_all.peff')
     for record in SeqIO.parse(file, 'fasta'):
@@ -51,7 +66,7 @@ with open ('nextprot_all.peff') as file:
             mature = fixed_sequence[start:(end+1)]
             peptides = parser.cleave(mature, 'trypsin')
             for peptide in peptides:
-                if 9 <= len(peptide) <= 30:
+                if 9 <= len(peptide) <= 40:
                     trypnum += 1
         else:
             matureError += 1
@@ -68,6 +83,15 @@ with open ('nextprot_all.peff') as file:
 
 dirs = os.listdir()
 chromosome = ''
+location = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','MT','unknown', 'X','Y']
+for item in location:
+    name = 'nextprot_chromosome_' + item + '.txt'
+    if name not in dirs:
+        print ('INFO: Downloading ' + name)
+        link2 = 'ftp://ftp.nextprot.org/pub/current_release/chr_reports/' + name
+        wget.download(link2)
+
+dirs = os.listdir()
 print('INFO: Reading chromosome*.txt files')
 for file in dirs:
     chrom = re.search(r'chromosome_(.+)\.txt', file)
@@ -195,6 +219,77 @@ for identifier in proteins:
     if proteins[identifier]['Gravy'] >= 0.0 and proteins[identifier]['protein_category'] == '':
         proteins[identifier]['protein_category'] = 'hydrophobic'
 
+# Test with just one chromosome, then do the final run with the whole proteome
+# Input files can be either compressed on uncompressed
+#input_file = 'G:/Data/nextprot/nextprot_release_2020-01-17/xml/nextprot_chromosome_21.xml.gz'
+input_file = 'nextprot_all.xml.gz'
+
+if os.path.isfile('nextprot_all.xml.gz')==False:
+    print ('INFO: Downloading nextprot_all.xml.gz')
+    link3 = 'ftp://ftp.nextprot.org/pub/current_release/xml/nextprot_all.xml.gz'
+    wget.download(link3)
+    
+# If the file ends with gz, then open it as a gzipped stream
+    is_compressed = False
+    if input_file.endswith('.gz'):
+        infile = gzip.open(input_file)
+        is_compressed = True
+    else:
+        infile = open(input_file, 'r', encoding="utf-8", errors="replace")
+
+    buffer = ''
+    state = 'outside_entry'
+
+    for line in infile:
+
+    # If we're reading a compressed stream, each line is actually a byte array, so convert to a string
+        if is_compressed:
+            line = line.decode('utf-8')
+
+    # If we're not inside an entry and we see the start of a entry, begin buffering
+        if state == 'outside_entry' and '<entry accession' in line:
+            state = 'in_entry'
+
+    # If we're inside an entry and find the end tag, end the buffering
+        elif state == 'in_entry' and '</entry>' in line:
+            state = 'parse_entry'
+            buffer += line
+
+    # If inside an entry, add this line to the buffer
+        if state == 'in_entry':
+            buffer += line
+
+    # If we just finished an entry, then parse the XML in the buffer and extract what we need
+        if state == 'parse_entry':
+            doc = etree.fromstring(buffer)
+            for entry in doc.xpath('//entry'):
+                counter = 0
+                match = re.match(r'NX_(.*)', entry.attrib['accession'])
+                identifier = match.group(1)
+
+            # Loop over the CV terms
+                cvterms = entry.xpath('.//cv-term[@terminology="nextprot-topology-cv"]/text()')
+                for item in cvterms:
+                    if item == "Transmembrane region":
+                        counter += 1
+                    
+                proteins[identifier] = {}
+                proteins[identifier]['Identifier'] = identifier
+                proteins[identifier]['n_TMs'] = counter
+                print(f"{identifier}\t{counter}")
+
+        # Done parsing this entry, reset the buffer
+            state = 'outside_entry'
+            buffer = ''
+
+# Convert the dict to a dataframe and write as xlsx
+if os.path.isfile('tmr_table.xlsx')==False:
+    df = pd.DataFrame(proteins)
+    df_t = df.transpose()
+    df_t = df_t[['Identifier', 'n_TMs']]
+    df_t.columns = ['Identifier', 'n_TMRs']
+    df_t.to_excel('tmr_table.xlsx', index = False)
+
 print('INFO: Reading tmr_table.xlsx')
 loc = ("tmr_table.xlsx")
 wb = xlrd.open_workbook(loc)
@@ -257,11 +352,13 @@ for row in read_tsv2:
 tsv_file2.close()
 
 counter = 0
+counter2 = 0
 ident = []
 gene = []
 for identifier in proteins:
     ident.append(proteins[identifier]['Identifier'])
     gene.append(proteins[identifier]['Symbol'])
+print('length of gene list: ', len(gene))
 for x in uniprot1:
     if x not in ident:
         counter += 1
@@ -269,6 +366,7 @@ for y in symbol1:
     if y not in gene:
         counter += 1
 print('Unmatched:', counter)   
+
 print('INFO: Reading rna_tissue_consensus.tsv')
 if os.path.isfile('rna_tissue_consensus.tsv.zip')==False:
     link = 'https://www.proteinatlas.org/download/rna_tissue_consensus.tsv.zip'
@@ -436,14 +534,22 @@ plt.show()
 
 index = []
 data = []
+s = []
 for i_tmr in range(16):
     if i_tmr in tmr:
         data.append(tmr[i_tmr])
         index.append(i_tmr)
-
+        s.append(len(tmr[i_tmr]))
 plt.violinplot(data, index, showmedians = True, showextrema = False)
-plt.xlabel('n_TMRs')
+
+plt.xlabel('Number of trans-membrane regions')
 plt.ylabel('GRAVY')
+for i in range(len(s)):
+    if s[i] > 0:
+        if index[i] % 2 == 0:
+            plt.annotate(str(s[i]), xy=(index[i],1), ha='center', va='bottom')
+        else:  
+            plt.annotate(str(s[i]), xy=(index[i],-1), ha='center', va='bottom') 
 plt.ylim(-2,2)
 plt.savefig('Histograms/tmr.png')
 plt.show()
@@ -451,10 +557,11 @@ plt.show()
 names = ['Enhanced', 'Supported', 'Approved', 'Uncertain']
 values = [reliability['Enhanced'],reliability['Supported'],reliability['Approved'],reliability['Uncertain']]
 plt.bar(names, values)
+plt.ylabel('Proteins')
 plt.savefig('Histograms/reliability')
 plt.show()
 
-category = ['Enhanced', 'Supported', 'Approved', 'Uncertain', 'blank']
+category = ['Enhanced', 'Supported', 'Approved', 'Uncertain', '-none-']
 pe1 = []
 pe2 = []
 pe3 = []
@@ -485,10 +592,11 @@ plt.bar(r, pe3, bottom = np.add(pe1,pe2), color = '#FF9999', label = 'PE3')
 plt.bar(r, pe4, bottom = np.add(np.add(pe1,pe2), pe3), color = '#CAE1FF', label = 'PE4')
 plt.xticks(r, category)
 plt.legend()
+plt.ylabel('Proteins')
 plt.savefig('Histograms/reliability_pe')
 plt.show()
 
-category2 = ['TCR_VDJ', 'TasteRecep', 'ERVM', 'PRAME']
+category2 = ['TCR_VDJ', 'PRAME', 'ERVM', 'TasteRecep']
 category_pe = {}
 for identifier in proteins:
     if proteins[identifier]['protein_category'] in category2:
@@ -529,6 +637,7 @@ plt.bar(r, pe3, bottom = np.add(pe1,pe2), color = '#FF9999', label = 'PE3')
 plt.bar(r, pe4, bottom = np.add(np.add(pe1,pe2), pe3), color = '#CAE1FF', label = 'PE4')
 plt.xticks(r, category2)
 plt.legend()
+plt.ylabel('Proteins')
 plt.savefig('Histograms/category1_pe')
 plt.show()
 
@@ -551,7 +660,7 @@ for identifier in proteins:
             if p not in pc:
                 pc[p] = 0
             pc[p] += 1
- 
+
 plt.bar(0, pe_234['2'], color = '#FFDEAD', label = 'PE2')
 plt.bar(0, pe_234['3'], bottom = pe_234['2'], color = '#FF9999', label = 'PE3')
 plt.bar(0, pe_234['4'], bottom = np.add(pe_234['2'],pe_234['3']), color = '#CAE1FF', label = 'PE4')
@@ -573,5 +682,6 @@ plt.xticks(range(len(category3)), category3)
 handles, labels = plt.gca().get_legend_handles_labels()
 order = [2,1,0,14,13,12,11,10,9,8,7,6,5,4,3]
 plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order], loc= 'upper right')
+plt.ylabel('Proteins')
 plt.savefig('Histograms/category2_pe')
 plt.show()
