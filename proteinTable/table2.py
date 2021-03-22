@@ -78,6 +78,7 @@ with open ('nextprot_all.peff') as file:
             proteins[identifier]['PE'] = int(pe)
             proteins[identifier]['Length'] = len(record.seq)
             proteins[identifier]['Gravy'] = analyzed_seq.gravy()
+            proteins[identifier]['MW'] = analyzed_seq.molecular_weight()
             proteins[identifier]['Chr'] = ''
             proteins[identifier]['n_Tryptic'] = trypnum
 
@@ -424,27 +425,30 @@ print('No mature proteins:', matureError)
 print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame(proteins)
 df_t = df.transpose()
-df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh', 'HPAcRNA_gt0Median', 'HPAcRNA_Ngt0', 'HPAcRNA_Max']]
-df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh','HPAcRNA_gt0Median', 'HPAcRNA_Ngt0', 'HPAcRNA_Max']
+df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'MW', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh', 'HPAcRNA_gt0Median', 'HPAcRNA_Ngt0', 'HPAcRNA_Max']]
+df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'MW', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh','HPAcRNA_gt0Median', 'HPAcRNA_Ngt0', 'HPAcRNA_Max']
 df_t.to_excel('protein_table.xlsx', index = False)
 
 gravy = []
+gravy2 = []
 for identifier in proteins:
     if proteins[identifier]['PE'] != 5:
         gravy.append(proteins[identifier]['Gravy'])
-
-gravy2 = []
-for identifier in proteins:
-    if proteins[identifier]['PE'] == 2 or proteins[identifier]['PE'] ==3 or proteins[identifier]['PE'] ==4:
+    if proteins[identifier]['PE'] == 2 or proteins[identifier]['PE'] == 3 or proteins[identifier]['PE'] == 4:
         gravy2.append(proteins[identifier]['Gravy'])
+mw = []
+mw2 = []
+for identifier in proteins:
+    if proteins[identifier]['PE'] != 5:
+        mw.append(proteins[identifier]['MW'])
+    if proteins[identifier]['PE'] == 2 or proteins[identifier]['PE'] == 3 or proteins[identifier]['PE'] == 4:
+        mw2.append(proteins[identifier]['MW'])
 
 tryptic = []
+tryptic2 = []
 for identifier in proteins:
     if proteins[identifier]['PE'] != 5:
         tryptic.append(proteins[identifier]['n_Tryptic'])
-
-tryptic2 = []
-for identifier in proteins:
     if proteins[identifier]['PE'] == 2 or proteins[identifier]['PE'] ==3 or proteins[identifier]['PE'] ==4:
         tryptic2.append(proteins[identifier]['n_Tryptic'])
 
@@ -497,6 +501,7 @@ if os.path.isdir('Histograms')==False:
     os.mkdir('Histograms')
 
 print('INFO: Creating plots')
+# GRAVY
 min = -2
 max = 2
 binsize = 0.1
@@ -508,7 +513,6 @@ plt.ylabel('Proteins')
 plt.grid(True)
 plt.savefig('Histograms/gravy.png')
 plt.show()
-
 plt.hist(gravy2, n_bins, [min,max], density = False, facecolor = 'b', alpha = 0.5)
 plt.title('Distribution of hydrophobicity of PE 2, 3, 4 proteins')
 plt.xlabel('Hydrophobicity (GRAVY score)')
@@ -517,6 +521,23 @@ plt.grid(True)
 plt.savefig('Histograms/gravy2.png')
 plt.show()
 
+# MW
+plt.hist(mw, 80, [250,420000], density = False, facecolor = 'r', alpha = 0.5)
+plt.title('Distribution of molecular weight of proteins')
+plt.xlabel('Molecular weight (Da)')
+plt.ylabel('Proteins')
+plt.grid(True)
+plt.savefig('Histograms/mw.png')
+plt.show()
+plt.hist(mw2, 80, [250,180000], density = False, facecolor = 'b', alpha = 0.5)
+plt.title('Distribution of molecular weight of PE 2, 3, 4 proteins')
+plt.xlabel('Molecular weight (Da)')
+plt.ylabel('Proteins')
+plt.grid(True)
+plt.savefig('Histograms/mw2.png')
+plt.show()
+
+#tryptic
 plt.hist(tryptic, 50, [0,50], density = False, facecolor = 'r', alpha = 0.5)
 plt.grid(True)
 plt.title('Distribution of tryptic peptides')
