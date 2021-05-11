@@ -77,10 +77,19 @@ with open ('nextprot_all.peff') as file:
             proteins[identifier]['Symbol'] = gene
             proteins[identifier]['PE'] = int(pe)
             proteins[identifier]['Length'] = len(record.seq)
-            proteins[identifier]['Gravy'] = analyzed_seq.gravy()
+            proteins[identifier]['Gravy'] = round(analyzed_seq.gravy(), 6)
             proteins[identifier]['MW'] = analyzed_seq.molecular_weight()
             proteins[identifier]['Chr'] = ''
             proteins[identifier]['n_Tryptic'] = trypnum
+
+for identifier in proteins:
+    proteins[identifier]['Found'] = ''
+    if proteins[identifier]['PE'] == 1:
+        proteins[identifier]['Found'] = 1
+    # elif proteins [identifier]['PE'] == 5:
+    #     proteins[identifier]['Found'] = ''
+    else:
+        proteins[identifier]['Found'] = 0
 
 dirs = os.listdir()
 chromosome = ''
@@ -196,29 +205,30 @@ for sheet in xlsx:
                  proteins[identifier]['MS_nP'] = 'Y'
 
 for identifier in proteins:
-    if 'Olfactory receptor' in proteins[identifier]['Name'] or 'olfactory receptor' in proteins[identifier]['Name']:
-        proteins[identifier]['protein_category'] = 'OR'
-    if 'GPCR' in proteins[identifier]['Name'] or 'G-protein coupled receptor' in proteins[identifier]['Name']:
-        proteins[identifier]['protein_category'] = 'GPCR'
-    if 'defensin' in proteins[identifier]['Name']:
-        proteins[identifier]['protein_category'] = 'defensin'
-    if 'zinc finger' in proteins[identifier]['Name'] or 'Zinc finger' in proteins[identifier]['Name']:
-        proteins[identifier]['protein_category'] = 'zinc finger'
-    if 'LINC' in proteins[identifier]['Symbol']:
-        proteins[identifier]['protein_category'] = 'LINC RNA'
-    if 'T cell receptor' in proteins[identifier]['Name']:
-        if 'variable' in proteins[identifier]['Name'] or 'diversity' in proteins[identifier]['Name'] or 'joining' in proteins[identifier]['Name']:
-            proteins[identifier]['protein_category'] = 'TCR_VDJ'
-    if 'Taste receptor' in proteins[identifier]['Name']:
-        proteins[identifier]['protein_category'] = 'TasteRecep'
-    if 'Endogenous retrovirus' in  proteins[identifier]['Name'] or 'endogenous retrovirus' in proteins[identifier]['Name']:
-        proteins[identifier]['protein_category'] = 'ERVM'
-    if 'PRAME' in proteins[identifier]['Name']:
-        proteins[identifier]['protein_category'] = 'PRAME'
-    if proteins[identifier]['Gravy'] >= 0.5 and proteins[identifier]['protein_category'] == '':
-        proteins[identifier]['protein_category'] = 'very hydrophobic'
-    if proteins[identifier]['Gravy'] >= 0.0 and proteins[identifier]['protein_category'] == '':
-        proteins[identifier]['protein_category'] = 'hydrophobic'
+    if proteins[identifier]['PE'] != 5:
+        if 'Olfactory receptor' in proteins[identifier]['Name'] or 'olfactory receptor' in proteins[identifier]['Name']:
+            proteins[identifier]['protein_category'] = 'OR'
+        if 'GPCR' in proteins[identifier]['Name'] or 'G-protein coupled receptor' in proteins[identifier]['Name']:
+            proteins[identifier]['protein_category'] = 'GPCR'
+        if 'defensin' in proteins[identifier]['Name']:
+            proteins[identifier]['protein_category'] = 'defensin'
+        if 'zinc finger' in proteins[identifier]['Name'] or 'Zinc finger' in proteins[identifier]['Name']:
+            proteins[identifier]['protein_category'] = 'zinc finger'
+        if 'LINC' in proteins[identifier]['Symbol']:
+            proteins[identifier]['protein_category'] = 'LINC RNA'
+        if 'T cell receptor' in proteins[identifier]['Name']:
+            if 'variable' in proteins[identifier]['Name'] or 'diversity' in proteins[identifier]['Name'] or 'joining' in proteins[identifier]['Name']:
+                proteins[identifier]['protein_category'] = 'TCR_VDJ'
+        if 'Taste receptor' in proteins[identifier]['Name']:
+            proteins[identifier]['protein_category'] = 'TasteRecep'
+        if 'Endogenous retrovirus' in  proteins[identifier]['Name'] or 'endogenous retrovirus' in proteins[identifier]['Name']:
+            proteins[identifier]['protein_category'] = 'ERVM'
+        if 'PRAME' in proteins[identifier]['Name']:
+            proteins[identifier]['protein_category'] = 'PRAME'
+        if proteins[identifier]['Gravy'] >= 0.5 and proteins[identifier]['protein_category'] == '':
+            proteins[identifier]['protein_category'] = 'very hydrophobic'
+        if proteins[identifier]['Gravy'] >= 0.0 and proteins[identifier]['protein_category'] == '':
+            proteins[identifier]['protein_category'] = 'hydrophobic'
 
 # Test with just one chromosome, then do the final run with the whole proteome
 # Input files can be either compressed on uncompressed
@@ -419,15 +429,47 @@ for identifier in proteins:
         proteins[identifier]['HPAcRNA_Ngt0'] = tissue[proteins[identifier]['Symbol']]['positive']
         proteins[identifier]['HPAcRNA_Max'] = tissue[proteins[identifier]['Symbol']]['max']
 
+print('INFO: Reading predict.xlsx')
+loc = ("predict.xlsx")
+wb = xlrd.open_workbook(loc)
+sheet = wb.sheet_by_index(0)
+i = 1
+for identifier in proteins:
+    if i != 0:
+        if i in range(sheet.nrows):
+            proteins[identifier]['Predict'] = (sheet.cell_value(i,1))
+        i += 1
+
 print('No gene symbol:', geneError)
 print('No mature proteins:', matureError)
 
 print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame(proteins)
 df_t = df.transpose()
-df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'MW', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh', 'HPAcRNA_gt0Median', 'HPAcRNA_Ngt0', 'HPAcRNA_Max']]
-df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'MW', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh','HPAcRNA_gt0Median', 'HPAcRNA_Ngt0', 'HPAcRNA_Max']
+df_t = df_t[['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'MW', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh', 'HPAcRNA_gt0Median', 'HPAcRNA_Ngt0', 'HPAcRNA_Max', 'Found', 'Predict']]
+df_t.columns = ['Identifier', 'Chr', 'Symbol', 'PE', 'Name', 'n_Isos', 'Length', 'MW', 'Gravy', 'n_PTMs', 'n_Var', 'Proteomics', 'Ab', '3D', 'Disease', 'n_Tryptic' , 'PA_category', 'PA_n_peptides', 'Edman', 'textbook knowledge', 'SP curated PPI', 'IntAct PPI GOLD', 'Exp function', 'mutagenesis', 'MS_PA', 'MS_MSV', 'MS_nP', 'protein_category', 'n_TMRs', 'HPA_Ab_Reliability', 'HPA_nHigh','HPAcRNA_gt0Median', 'HPAcRNA_Ngt0', 'HPAcRNA_Max', 'Found', 'Predict']
 df_t.to_excel('protein_table.xlsx', index = False)
+        
+fp = []
+fn = []
+tp = []
+tn = []
+
+for identifier in proteins:
+    if proteins[identifier]['Found'] == proteins[identifier]['Predict']:
+        if proteins[identifier]['Found'] == 0:
+            tn.append(proteins[identifier]['Identifier'])
+        if proteins[identifier]['Found'] == 1:
+            tp.append(proteins[identifier]['Identifier'])
+    else:
+        if proteins[identifier]['Found'] == 0:
+            fp.append(proteins[identifier]['Identifier'])
+        if proteins [identifier]['Found'] == 1:
+            fn.append(proteins[identifier]['Identifier'])
+print('true positive: ', len(tp))
+print('true negative: ', len(tn))
+print('false positive: ', len(fp))
+print('false negative: ', len(fn))
 
 gravy = []
 gravy2 = []
@@ -440,9 +482,9 @@ mw = []
 mw2 = []
 for identifier in proteins:
     if proteins[identifier]['PE'] != 5:
-        mw.append(proteins[identifier]['MW'])
+        mw.append((proteins[identifier]['MW'])/1000)
     if proteins[identifier]['PE'] == 2 or proteins[identifier]['PE'] == 3 or proteins[identifier]['PE'] == 4:
-        mw2.append(proteins[identifier]['MW'])
+        mw2.append((proteins[identifier]['MW'])/1000)
 
 tryptic = []
 tryptic2 = []
@@ -522,16 +564,16 @@ plt.savefig('Histograms/gravy2.png')
 plt.show()
 
 # MW
-plt.hist(mw, 80, [250,420000], density = False, facecolor = 'r', alpha = 0.5)
+plt.hist(mw, 80, [0.25,200], density = False, facecolor = 'r', alpha = 0.5)
 plt.title('Distribution of molecular weight of proteins')
-plt.xlabel('Molecular weight (Da)')
+plt.xlabel('Molecular weight (kDa)')
 plt.ylabel('Proteins')
 plt.grid(True)
 plt.savefig('Histograms/mw.png')
 plt.show()
-plt.hist(mw2, 80, [250,180000], density = False, facecolor = 'b', alpha = 0.5)
+plt.hist(mw2, 80, [0.25,200], density = False, facecolor = 'b', alpha = 0.5)
 plt.title('Distribution of molecular weight of PE 2, 3, 4 proteins')
-plt.xlabel('Molecular weight (Da)')
+plt.xlabel('Molecular weight (kDa)')
 plt.ylabel('Proteins')
 plt.grid(True)
 plt.savefig('Histograms/mw2.png')
@@ -544,8 +586,7 @@ plt.title('Distribution of tryptic peptides')
 plt.xlabel('Number of peptides')
 plt.ylabel('Proteins')
 plt.savefig('Histograms/tryptic.png')
-plt.show()
-                        
+plt.show()                
 plt.hist(tryptic2, 50, [0,50], density = False, facecolor = 'b', alpha = 0.5)
 plt.grid(True)
 plt.title('Distribution of tryptic peptides for PE 2, 3, 4 proteins')
@@ -706,4 +747,37 @@ order = [2,1,0,14,13,12,11,10,9,8,7,6,5,4,3]
 plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order], loc= 'upper right')
 plt.ylabel('Proteins')
 plt.savefig('Histograms/category2_pe')
+plt.show()
+
+fig, axs = plt.subplots(2,3, figsize=(12,8.2))
+min = -2
+max = 2
+binsize = 0.1
+n_bins = int((max-min) / binsize)
+axs[0,0].hist(gravy, n_bins, [min,max], density = False, facecolor = 'r', alpha = 0.5)
+axs[0,0].set_title('A', x=0.8, y=0.8, fontsize = 20)
+axs[0,0].set_xlabel('GRAVY')
+axs[0,0].set_ylabel('Proteins')
+axs[0,1].hist(tryptic, 50, [0,50], density = False, facecolor = 'r', alpha = 0.5)
+axs[0,1].set_title('C', x=0.8, y=0.8, fontsize = 20)
+axs[0,1].set_xlabel('Number of peptides')
+axs[0,1].set_ylabel('Proteins')
+axs[0,2].hist(mw, 80, [0.25,200], density = False, facecolor = 'r', alpha = 0.5)
+axs[0,2].set_title('E', x=0.8, y=0.8, fontsize = 20)
+axs[0,2].set_xlabel('Molecular weight (kDa)')
+axs[0,2].set_ylabel('Proteins')
+axs[1,0].hist(gravy2, n_bins, [min,max], density = False, facecolor = 'b', alpha = 0.5)
+axs[1,0].set_title('B', x=0.8, y=0.8, fontsize = 20)
+axs[1,0].set_xlabel('GRAVY')
+axs[1,0].set_ylabel('Proteins')
+axs[1,1].hist(tryptic2, 50, [0,50], density = False, facecolor = 'b', alpha = 0.5)
+axs[1,1].set_title('D', x=0.8, y=0.8, fontsize = 20)
+axs[1,1].set_xlabel('Number of peptides')
+axs[1,1].set_ylabel('Proteins')
+axs[1,2].hist(mw2, 80, [0.25,200], density = False, facecolor = 'b', alpha = 0.5)
+axs[1,2].set_title('F', x=0.8, y=0.8, fontsize = 20)
+axs[1,2].set_xlabel('Molecular weight (kDa)')
+axs[1,2].set_ylabel('Proteins')
+fig.tight_layout()
+plt.savefig('Histograms/combined_hist')
 plt.show()
