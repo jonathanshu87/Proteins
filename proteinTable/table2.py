@@ -17,10 +17,15 @@ import gzip
 import shutil
 import sys
 from lxml import etree
+import glob
 
 proteins={}
 geneError = 0
+gError = []
 matureError = 0
+mError = []
+matureUnknown = 0
+mUnknown = []
 
 if os.path.isfile('nextprot_all.peff')==False:
     print ('INFO: Downloading nextprot_all.peff.gz')
@@ -53,23 +58,41 @@ with open ('nextprot_all.peff') as file:
         else:
             gene = ''
             geneError += 1
+            gError.append(identifier)
         match4 = re.search(r'\\PE=(.+?) \\', record.description)
         if match4:
             pe = match4.group(1)
         else:
             pe = ''
             print(f'WARNING: Unable to find PE value in {record.description}')
-        match5 = re.search(r'\((\d+)\|(\d+)\|PEFF:\d+\|mature protein\)', record.description)
-        if match5:
-            start = int(match5.group(1))
-            end = int(match5.group(2))
-            mature = fixed_sequence[start:(end+1)]
+        match5 = re.search(r'\((.{0,5})\|(.{0,5})\|PEFF:\d+\|mature protein\)', record.description)
+        x = len(re.findall(r'\((.{0,5})\|(.{0,5})\|PEFF:\d+\|mature protein\)', record.description))
+        if x > 1: 
+            mature = fixed_sequence
             peptides = parser.cleave(mature, 'trypsin')
             for peptide in peptides:
                 if 9 <= len(peptide) <= 40:
                     trypnum += 1
+        if match5:
+            if match5.group(1) == '?' or match5.group(2) == '?':
+                matureUnknown += 1
+                mUnknown.append(identifier)
+                mature = fixed_sequence
+                peptides = parser.cleave(mature, 'trypsin')
+                for peptide in peptides:
+                    if 9 <= len(peptide) <= 40:
+                        trypnum += 1
+            else:
+                start = int(match5.group(1))
+                end = int(match5.group(2))
+                mature = fixed_sequence[start:(end+1)]
+                peptides = parser.cleave(mature, 'trypsin')
+                for peptide in peptides:
+                    if 9 <= len(peptide) <= 40:
+                        trypnum += 1
         else:
             matureError += 1
+            mError.append(identifier)
         if identifier not in proteins:
             proteins[identifier] = {}
             proteins[identifier]['Identifier'] = identifier
@@ -86,8 +109,6 @@ for identifier in proteins:
     proteins[identifier]['Found'] = ''
     if proteins[identifier]['PE'] == 1:
         proteins[identifier]['Found'] = 1
-    # elif proteins [identifier]['PE'] == 5:
-    #     proteins[identifier]['Found'] = ''
     else:
         proteins[identifier]['Found'] = 0
 
@@ -442,6 +463,7 @@ for identifier in proteins:
 
 print('No gene symbol:', geneError)
 print('No mature proteins:', matureError)
+print('Unknown mature protein start/end: ', matureUnknown)
 
 print('INFO: Writing final result: protein_table.xlsx')
 df = pd.DataFrame(proteins)
@@ -539,8 +561,8 @@ reliability_pe_list.append(reliability_pe['Approved'])
 reliability_pe_list.append(reliability_pe['Uncertain'])
 reliability_pe_list.append(reliability_pe['blank'])
 
-if os.path.isdir('Histograms')==False:
-    os.mkdir('Histograms')
+if os.path.isdir('Figures')==False:
+    os.mkdir('Figures')
 
 print('INFO: Creating plots')
 # GRAVY
@@ -553,14 +575,14 @@ plt.title('Distribution of hydrophobicity of proteins')
 plt.xlabel('Hydrophobicity (GRAVY score)')
 plt.ylabel('Proteins')
 plt.grid(True)
-plt.savefig('Histograms/gravy.png')
+plt.savefig('Figures/gravy.png')
 plt.show()
 plt.hist(gravy2, n_bins, [min,max], density = False, facecolor = 'b', alpha = 0.5)
 plt.title('Distribution of hydrophobicity of PE 2, 3, 4 proteins')
 plt.xlabel('Hydrophobicity (GRAVY score)')
 plt.ylabel('Proteins')
 plt.grid(True)
-plt.savefig('Histograms/gravy2.png')
+plt.savefig('Figures/gravy2.png')
 plt.show()
 
 # MW
@@ -569,14 +591,14 @@ plt.title('Distribution of molecular weight of proteins')
 plt.xlabel('Molecular weight (kDa)')
 plt.ylabel('Proteins')
 plt.grid(True)
-plt.savefig('Histograms/mw.png')
+plt.savefig('Figures/mw.png')
 plt.show()
 plt.hist(mw2, 80, [0.25,200], density = False, facecolor = 'b', alpha = 0.5)
 plt.title('Distribution of molecular weight of PE 2, 3, 4 proteins')
 plt.xlabel('Molecular weight (kDa)')
 plt.ylabel('Proteins')
 plt.grid(True)
-plt.savefig('Histograms/mw2.png')
+plt.savefig('Figures/mw2.png')
 plt.show()
 
 #tryptic
@@ -585,14 +607,14 @@ plt.grid(True)
 plt.title('Distribution of tryptic peptides')
 plt.xlabel('Number of peptides')
 plt.ylabel('Proteins')
-plt.savefig('Histograms/tryptic.png')
+plt.savefig('Figures/tryptic.png')
 plt.show()                
 plt.hist(tryptic2, 50, [0,50], density = False, facecolor = 'b', alpha = 0.5)
 plt.grid(True)
 plt.title('Distribution of tryptic peptides for PE 2, 3, 4 proteins')
 plt.xlabel('Number of peptides')
 plt.ylabel('Proteins')
-plt.savefig('Histograms/tryptic2.png')
+plt.savefig('Figures/tryptic2.png')
 plt.show()
 
 index = []
@@ -614,14 +636,14 @@ for i in range(len(s)):
         else:  
             plt.annotate(str(s[i]), xy=(index[i],-1), ha='center', va='bottom') 
 plt.ylim(-2,2)
-plt.savefig('Histograms/tmr.png')
+plt.savefig('Figures/tmr.png')
 plt.show()
 
 names = ['Enhanced', 'Supported', 'Approved', 'Uncertain']
 values = [reliability['Enhanced'],reliability['Supported'],reliability['Approved'],reliability['Uncertain']]
 plt.bar(names, values)
 plt.ylabel('Proteins')
-plt.savefig('Histograms/reliability')
+plt.savefig('Figures/reliability')
 plt.show()
 
 category = ['Enhanced', 'Supported', 'Approved', 'Uncertain', '-none-']
@@ -656,7 +678,7 @@ plt.bar(r, pe4, bottom = np.add(np.add(pe1,pe2), pe3), color = '#CAE1FF', label 
 plt.xticks(r, category)
 plt.legend()
 plt.ylabel('Proteins')
-plt.savefig('Histograms/reliability_pe')
+plt.savefig('Figures/reliability_pe')
 plt.show()
 
 category2 = ['TCR_VDJ', 'PRAME', 'ERVM', 'TasteRecep']
@@ -701,7 +723,7 @@ plt.bar(r, pe4, bottom = np.add(np.add(pe1,pe2), pe3), color = '#CAE1FF', label 
 plt.xticks(r, category2)
 plt.legend()
 plt.ylabel('Proteins')
-plt.savefig('Histograms/category1_pe')
+plt.savefig('Figures/category1_pe')
 plt.show()
 
 category3 = ('PE2,3,4', 'protein_category', '')
@@ -746,7 +768,7 @@ handles, labels = plt.gca().get_legend_handles_labels()
 order = [2,1,0,14,13,12,11,10,9,8,7,6,5,4,3]
 plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order], loc= 'upper right')
 plt.ylabel('Proteins')
-plt.savefig('Histograms/category2_pe')
+plt.savefig('Figures/category2_pe')
 plt.show()
 
 fig, axs = plt.subplots(2,3, figsize=(12,8.2))
@@ -755,14 +777,17 @@ max = 2
 binsize = 0.1
 n_bins = int((max-min) / binsize)
 axs[0,0].hist(gravy, n_bins, [min,max], density = False, facecolor = 'r', alpha = 0.5)
+axs[0,0].hist(gravy2, n_bins, [min,max], density = False, facecolor = 'b', alpha = 0.5)
 axs[0,0].set_title('A', x=0.8, y=0.8, fontsize = 20)
 axs[0,0].set_xlabel('GRAVY')
 axs[0,0].set_ylabel('Proteins')
 axs[0,1].hist(tryptic, 50, [0,50], density = False, facecolor = 'r', alpha = 0.5)
+axs[0,1].hist(tryptic2, 50, [0,50], density = False, facecolor = 'b', alpha = 0.5)
 axs[0,1].set_title('C', x=0.8, y=0.8, fontsize = 20)
 axs[0,1].set_xlabel('Number of peptides')
 axs[0,1].set_ylabel('Proteins')
 axs[0,2].hist(mw, 80, [0.25,200], density = False, facecolor = 'r', alpha = 0.5)
+axs[0,2].hist(mw2, 80, [0.25,200], density = False, facecolor = 'b', alpha = 0.5)
 axs[0,2].set_title('E', x=0.8, y=0.8, fontsize = 20)
 axs[0,2].set_xlabel('Molecular weight (kDa)')
 axs[0,2].set_ylabel('Proteins')
@@ -779,5 +804,5 @@ axs[1,2].set_title('F', x=0.8, y=0.8, fontsize = 20)
 axs[1,2].set_xlabel('Molecular weight (kDa)')
 axs[1,2].set_ylabel('Proteins')
 fig.tight_layout()
-plt.savefig('Histograms/combined_hist')
+plt.savefig('Figures/combined_hist')
 plt.show()
